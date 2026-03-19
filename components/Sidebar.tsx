@@ -86,12 +86,12 @@ const Sidebar = () => {
             icon: ClipboardList,
             hasSubmenu: true
         },
-        {
-            name: "Manning Structure",
-            path: "/dashboard/manning-structure",
-            icon: BarChart3,
-            hasSubmenu: true
-        },
+        // {
+        //     name: "Manning Structure",
+        //     path: "/dashboard/manning-structure",
+        //     icon: BarChart3,
+        //     hasSubmenu: true
+        // },
         {
             name: "SOP Generator",
             path: "/dashboard/sop-generator",
