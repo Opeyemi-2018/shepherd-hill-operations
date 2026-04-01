@@ -14,7 +14,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, UploadCloud, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const CreateSOP = () => {
@@ -22,11 +22,14 @@ const CreateSOP = () => {
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
+
+    // 1. Added document to the state (typed as File | null)
     const [formData, setFormData] = useState({
         sop_title: "",
         client_name: "",
         location: "",
         effective_date: "",
+        document: null as File | null,
     });
 
     // Handle Text Inputs
@@ -39,35 +42,54 @@ const CreateSOP = () => {
         setFormData({ ...formData, [name]: value });
     };
 
+    // 2. Handle File Input
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setFormData({ ...formData, document: e.target.files[0] });
+        }
+    };
+
     const handleSubmit = async () => {
-        // Basic Validation
-        if (!formData.sop_title || !formData.client_name || !formData.location || !formData.effective_date) {
-            toast.error("Please fill in all required fields.");
+        // 3. Added validation for the document
+        if (!formData.sop_title || !formData.client_name || !formData.location || !formData.effective_date || !formData.document) {
+            toast.error("Please fill in all required fields, including the document.");
             return;
         }
 
         setLoading(true);
 
         try {
-            // NOTE: Ensure this matches your backend route
+            // 4. Use FormData to handle the file upload
+            const submitData = new FormData();
+            submitData.append("sop_title", formData.sop_title);
+            submitData.append("client_name", formData.client_name);
+            submitData.append("location", formData.location);
+            submitData.append("effective_date", formData.effective_date);
+            submitData.append("document", formData.document);
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/operations/sop-generators`, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
+                    // DO NOT set "Content-Type": "application/json" or "multipart/form-data" here.
+                    // The browser will automatically set the correct boundary for FormData.
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify(formData),
+                body: submitData, // Pass the FormData object here
             });
 
             const result = await response.json();
 
             if (response.ok && result.status) {
-                toast.success("SOP Basic Information saved successfully");
-                // Since the button says "Next", you might want to redirect to a "Step 2" page
-                // For now, redirecting to the list view
+                toast.success("SOP created successfully");
                 router.push("/dashboard/sop-generator");
             } else {
-                toast.error(result.message || "Failed to create SOP");
+                // If Laravel returns validation errors, show them
+                if (result.errors) {
+                    const firstError = Object.values(result.errors)[0] as string[];
+                    toast.error(firstError[0] || "Validation failed");
+                } else {
+                    toast.error(result.message || "Failed to create SOP");
+                }
             }
         } catch (error) {
             console.error("Submission error:", error);
@@ -115,10 +137,9 @@ const CreateSOP = () => {
                             onValueChange={(val) => handleSelectChange("client_name", val)}
                         >
                             <SelectTrigger className="h-12 bg-white">
-                                <SelectValue placeholder="Enter Client/Site Name" />
+                                <SelectValue placeholder="Select Client/Site Name" />
                             </SelectTrigger>
                             <SelectContent>
-                                {/* Dynamically populate these from your Clients API */}
                                 <SelectItem value="Dangote Refinery">Dangote Refinery</SelectItem>
                                 <SelectItem value="Zenith Bank HQ">Zenith Bank HQ</SelectItem>
                                 <SelectItem value="Shoprite Ikeja">Shoprite Ikeja</SelectItem>
@@ -151,6 +172,37 @@ const CreateSOP = () => {
                         />
                     </div>
 
+                    {/* 5. Document Upload UI */}
+                    <div className="space-y-2">
+                        <Label className="text-[#3A3A3A] font-medium">SOP Document</Label>
+                        <div className="relative border-2 border-dashed rounded-lg p-6 hover:bg-muted/50 transition-colors text-center cursor-pointer">
+                            <Input
+                                type="file"
+                                name="document"
+                                accept=".pdf,.doc,.docx" // Add acceptable file types
+                                onChange={handleFileChange}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
+                                {formData.document ? (
+                                    <>
+                                        <FileText className="h-8 w-8 text-[#FAB435]" />
+                                        <p className="text-sm font-medium text-foreground truncate max-w-[250px]">
+                                            {formData.document.name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">Click to change file</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                                        <p className="text-sm font-medium text-foreground">Click or drag file to upload</p>
+                                        <p className="text-xs text-muted-foreground">PDF, DOC, DOCX</p>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Footer Buttons */}
                     <div className="flex justify-end gap-4 pt-4">
                         <Button
@@ -172,7 +224,7 @@ const CreateSOP = () => {
                                     Processing...
                                 </>
                             ) : (
-                                "Next"
+                                "Create SOP"
                             )}
                         </Button>
                     </div>

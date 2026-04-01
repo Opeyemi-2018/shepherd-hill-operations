@@ -11,11 +11,18 @@ import {
     Calendar,
     Download,
     Loader2,
-    ArrowLeft
+    ArrowLeft,
+    Eye,
+    FileText,
+    X
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+    Dialog,
+    DialogContent,
+} from "@/components/ui/dialog";
 
-// Interface matching the design structure
+// Interface matching the design structure + document field
 interface SOPDetails {
     id: string;
     title: string;
@@ -24,6 +31,7 @@ interface SOPDetails {
     procedure_steps: string[];
     responsibilities: string[];
     emergency_instructions: string[];
+    document?: string | null; // Added document field
 }
 
 const SOPDetailsPage = () => {
@@ -33,6 +41,10 @@ const SOPDetailsPage = () => {
 
     const [data, setData] = useState<SOPDetails | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // --- DOCUMENT PREVIEW MODAL STATE ---
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
     // Fetch Data
     useEffect(() => {
@@ -46,31 +58,12 @@ const SOPDetailsPage = () => {
                     }
                 );
                 const result = await response.json();
+                console.log(result);
                 if (result.status) {
                     setData(result.data);
                 }
             } catch (error) {
                 console.error("Error fetching details:", error);
-
-                // Mock data fallback to match screenshot if API fails
-                // setData({
-                //     id: "1",
-                //     title: "Gate Access Control Procedure",
-                //     site: "Dangote Refinery Gate 3",
-                //     effective_date: "16 Jan 2026",
-                //     procedure_steps: [
-                //         "Multiple uncontrolled entry points around the facility",
-                //         "Blind spots observed around emergency exit routes"
-                //     ],
-                //     responsibilities: [
-                //         "Multiple uncontrolled entry points around the facility"
-                //     ],
-                //     emergency_instructions: [
-                //         "High volume of visitor traffic during business hours",
-                //         "Delivery vehicles enter premises without verification",
-                //         "Staff frequently use emergency exits as regular entry points"
-                //     ]
-                // });
             } finally {
                 setLoading(false);
             }
@@ -78,6 +71,25 @@ const SOPDetailsPage = () => {
 
         fetchDetails();
     }, [token, params.id]);
+
+    // --- OPEN DOCUMENT PREVIEW ---
+    const openPreview = (url: string | undefined | null) => {
+        if (!url) {
+            toast.error("No document available to view.");
+            return;
+        }
+
+        // Extract just the file path
+        let filePath = url;
+        if (url.includes('storage/')) {
+            filePath = url.split('storage/').pop() || url;
+        }
+
+        // Construct exact custom URL
+        const customUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/app/public/${filePath}`;
+        setPreviewUrl(customUrl);
+        setIsPreviewModalOpen(true);
+    };
 
     if (loading) {
         return (
@@ -115,7 +127,7 @@ const SOPDetailsPage = () => {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-                {items.length > 0 ? (
+                {items && items.length > 0 ? (
                     items.map((item, index) => (
                         <div
                             key={index}
@@ -152,13 +164,27 @@ const SOPDetailsPage = () => {
                     <p className="text-gray-500 text-sm ml-8">Shows SOP Preview.</p>
                 </div>
 
-                <Button
-                    variant="outline"
-                    className="gap-2 bg-[#FAB435]/10 text-[#E89500] border-none hover:bg-[#FAB435]/20"
-                    onClick={() => toast.success("Downloading SOP...")}
-                >
-                    <Download className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                    {/* View Document Button - Only shows if a document exists */}
+                    {data.document && (
+                        <Button
+                            variant="outline"
+                            className="gap-2 bg-blue-50 text-blue-600 border-none hover:bg-blue-100"
+                            onClick={() => openPreview(data.document)}
+                        >
+                            <Eye className="h-4 w-4" />
+                            View Document
+                        </Button>
+                    )}
+
+                    <Button
+                        variant="outline"
+                        className="gap-2 bg-[#FAB435]/10 text-[#E89500] border-none hover:bg-[#FAB435]/20"
+                        onClick={() => toast.success("Downloading SOP...")}
+                    >
+                        <Download className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
 
             {/* 1. Top Info Cards */}
@@ -200,6 +226,66 @@ const SOPDetailsPage = () => {
                     items={data.emergency_instructions}
                 />
             </div>
+
+            {/* --- DOCUMENT PREVIEW DIALOG --- */}
+            <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
+                <DialogContent className="max-w-[80vw] h-[85vh] p-0 flex flex-col overflow-hidden bg-black/90 border-0">
+                    <div className="flex justify-between items-center p-4 bg-black/50 text-white">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-[#FAB435]" />
+                            Document Preview
+                        </h2>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setIsPreviewModalOpen(false)}
+                            className="text-white hover:bg-white/20"
+                        >
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
+
+                    <div className="flex-1 w-full h-full relative flex items-center justify-center overflow-hidden p-4">
+                        {previewUrl && (
+                            // Determine how to display based on file extension
+                            previewUrl.toLowerCase().split('?')[0].endsWith('.pdf') ? (
+                                <object
+                                    data={previewUrl}
+                                    type="application/pdf"
+                                    className="w-full h-full rounded bg-white"
+                                >
+                                    <iframe
+                                        src={previewUrl}
+                                        className="w-full h-full rounded bg-white"
+                                        title="PDF Document Viewer"
+                                    />
+                                </object>
+                            ) : previewUrl.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) != null ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={previewUrl}
+                                    alt="Document"
+                                    className="max-w-full max-h-full object-contain rounded"
+                                />
+                            ) : (
+                                // Fallback for Word Documents (.doc, .docx) or unknown types
+                                <div className="text-white flex flex-col items-center gap-4 text-center">
+                                    <FileText className="h-16 w-16 text-gray-400" />
+                                    <p className="text-lg">This file type cannot be previewed directly in the browser.</p>
+                                    <a
+                                        href={previewUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[#FAB435] hover:text-[#E89500] font-medium underline px-4 py-2 bg-white/10 rounded"
+                                    >
+                                        Click here to download or open the file
+                                    </a>
+                                </div>
+                            )
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
