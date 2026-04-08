@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,32 +17,66 @@ import {
 import { Loader2, UploadCloud, FileText } from "lucide-react";
 import { toast } from "sonner";
 
+interface Client {
+    id: number | string;
+    name: string;
+}
+
 const CreateSOP = () => {
     const { token } = useAuth();
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
+    const [clients, setClients] = useState<Client[]>([]);
 
-    // 1. Added document to the state (typed as File | null)
+    // 1. Added client_name back to the state
     const [formData, setFormData] = useState({
         sop_title: "",
+        client_id: "",
         client_name: "",
         location: "",
         effective_date: "",
         document: null as File | null,
     });
 
-    // Handle Text Inputs
+    useEffect(() => {
+        const fetchClients = async () => {
+            if (!token) return;
+            try {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/operations/client`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const result = await response.json();
+
+                if (result.status || result.success) {
+                    const clientData = result.data?.data || result.data || [];
+                    setClients(clientData);
+                }
+            } catch (error) {
+                console.error("Failed to load clients:", error);
+                toast.error("Failed to load clients list.");
+            }
+        };
+        fetchClients();
+    }, [token]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // Handle Select Inputs
-    const handleSelectChange = (name: string, value: string) => {
-        setFormData({ ...formData, [name]: value });
+    // 2. Custom handler to grab BOTH the ID and the Name when a client is selected
+    const handleClientSelect = (selectedId: string) => {
+        const selectedClient = clients.find(client => String(client.id) === selectedId);
+
+        if (selectedClient) {
+            setFormData({
+                ...formData,
+                client_id: String(selectedClient.id),
+                client_name: selectedClient.name
+            });
+        }
     };
 
-    // 2. Handle File Input
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             setFormData({ ...formData, document: e.target.files[0] });
@@ -50,8 +84,8 @@ const CreateSOP = () => {
     };
 
     const handleSubmit = async () => {
-        // 3. Added validation for the document
-        if (!formData.sop_title || !formData.client_name || !formData.location || !formData.effective_date || !formData.document) {
+        // Ensure client_name is also validated
+        if (!formData.sop_title || !formData.client_id || !formData.client_name || !formData.location || !formData.effective_date || !formData.document) {
             toast.error("Please fill in all required fields, including the document.");
             return;
         }
@@ -59,10 +93,10 @@ const CreateSOP = () => {
         setLoading(true);
 
         try {
-            // 4. Use FormData to handle the file upload
             const submitData = new FormData();
             submitData.append("sop_title", formData.sop_title);
-            submitData.append("client_name", formData.client_name);
+            submitData.append("client_id", formData.client_id);
+            submitData.append("client_name", formData.client_name); // 3. Pass client_name to the payload
             submitData.append("location", formData.location);
             submitData.append("effective_date", formData.effective_date);
             submitData.append("document", formData.document);
@@ -70,11 +104,9 @@ const CreateSOP = () => {
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/operations/sop-generators`, {
                 method: "POST",
                 headers: {
-                    // DO NOT set "Content-Type": "application/json" or "multipart/form-data" here.
-                    // The browser will automatically set the correct boundary for FormData.
                     Authorization: `Bearer ${token}`
                 },
-                body: submitData, // Pass the FormData object here
+                body: submitData,
             });
 
             const result = await response.json();
@@ -83,7 +115,6 @@ const CreateSOP = () => {
                 toast.success("SOP created successfully");
                 router.push("/dashboard/sop-generator");
             } else {
-                // If Laravel returns validation errors, show them
                 if (result.errors) {
                     const firstError = Object.values(result.errors)[0] as string[];
                     toast.error(firstError[0] || "Validation failed");
@@ -129,21 +160,28 @@ const CreateSOP = () => {
                         />
                     </div>
 
-                    {/* Client/Site Name */}
+                    {/* Client/Site Name - Uses the new handleClientSelect */}
                     <div className="space-y-2">
                         <Label className="text-[#3A3A3A] font-medium">Client/Site Name</Label>
                         <Select
-                            value={formData.client_name}
-                            onValueChange={(val) => handleSelectChange("client_name", val)}
+                            value={formData.client_id}
+                            onValueChange={handleClientSelect}
                         >
                             <SelectTrigger className="h-12 bg-white">
                                 <SelectValue placeholder="Select Client/Site Name" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Dangote Refinery">Dangote Refinery</SelectItem>
-                                <SelectItem value="Zenith Bank HQ">Zenith Bank HQ</SelectItem>
-                                <SelectItem value="Shoprite Ikeja">Shoprite Ikeja</SelectItem>
-                                <SelectItem value="MTN Office Lekki">MTN Office Lekki</SelectItem>
+                                {clients.length > 0 ? (
+                                    clients.map((client) => (
+                                        <SelectItem key={client.id} value={String(client.id)}>
+                                            {client.name}
+                                        </SelectItem>
+                                    ))
+                                ) : (
+                                    <SelectItem value="none" disabled>
+                                        No clients found
+                                    </SelectItem>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
@@ -172,14 +210,14 @@ const CreateSOP = () => {
                         />
                     </div>
 
-                    {/* 5. Document Upload UI */}
+                    {/* Document Upload UI */}
                     <div className="space-y-2">
                         <Label className="text-[#3A3A3A] font-medium">SOP Document</Label>
                         <div className="relative border-2 border-dashed rounded-lg p-6 hover:bg-muted/50 transition-colors text-center cursor-pointer">
                             <Input
                                 type="file"
                                 name="document"
-                                accept=".pdf,.doc,.docx" // Add acceptable file types
+                                accept=".pdf,.doc,.docx"
                                 onChange={handleFileChange}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
