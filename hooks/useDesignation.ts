@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/context/token";
+import { useAuth } from "@/context/AuthContext";
+
 
 export interface IDesignation {
   id: number;

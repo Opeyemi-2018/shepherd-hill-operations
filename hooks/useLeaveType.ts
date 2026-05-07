@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/token";
+import { useAuth } from "@/context/AuthContext";
+
 
 interface LeaveType {
   id: number;
