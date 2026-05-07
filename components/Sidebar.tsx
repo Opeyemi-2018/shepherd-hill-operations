@@ -14,7 +14,7 @@ import {
     BarChart3,
     LayoutGrid,
     LucideColumnsSettings,
-    ChevronRight
+    ChevronRight, GraduationCap
 } from "lucide-react";
 import AddNewService from "./AddNewService";
 import {
@@ -102,6 +102,12 @@ const Sidebar = () => {
             name: "Settings",
             path: "/dashboard/settings",
             icon: LucideColumnsSettings, // <--- Changed from LayoutGrid
+            hasSubmenu: false
+        },
+        {
+            name: "Manage CRF Documents",
+            path: "/dashboard/retainership-form",
+            icon: GraduationCap,
             hasSubmenu: false
         },
     ];

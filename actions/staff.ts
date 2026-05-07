@@ -59,3 +59,89 @@ export async function getClientStaff(token: string): Promise<ApiStaff[]> {
       : new Error("Failed to load client staff members");
   }
 }
+export async function fetchStaff(token: string) {
+  try {
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/staff`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        },
+    );
+
+    // Return status code so client can handle it
+    if (res.status === 401 || res.status === 403) {
+      return {
+        success: false,
+        statusCode: res.status,
+        error: "Unauthorized",
+      };
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      return {
+        success: false,
+        statusCode: res.status,
+        error: errorText || "Failed to fetch staff data",
+      };
+    }
+
+    const data = await res.json();
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// get stff detail
+export async function fetchStaffDetails(
+    token: string,
+    staffId: string | number,
+) {
+  try {
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/staff/details/${staffId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        },
+    );
+
+    if (res.status === 401 || res.status === 403) {
+      return {
+        success: false,
+        statusCode: res.status,
+        error: "Unauthorized",
+      };
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      return {
+        success: false,
+        statusCode: res.status,
+        error: errorText || "Failed to fetch staff details",
+      };
+    }
+
+    const data = await res.json();
+    return { success: true, data: data.data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
