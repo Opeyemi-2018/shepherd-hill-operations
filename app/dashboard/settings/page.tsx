@@ -141,7 +141,7 @@ const SettingsPage = () => {
         <div className="space-y-6 mt-8 pb-10 relative">
             <Headercontent
                 title="Settings"
-                description="Manage your Personal Information"
+                description="Manage your Personal Information."
             />
 
             <Card className="border border-gray-100 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden relative z-0">
