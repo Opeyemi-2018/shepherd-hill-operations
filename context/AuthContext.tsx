@@ -45,9 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // start
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== "https://admin.shsaccess.com") return; 
+      if (event.origin !== "https://admin.shsaccess.com") return;
 
       if (event.data?.type === "AUTH_INJECT" && event.data?.token) {
         localStorage.setItem("token", event.data.token);
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [router]);
+  // end
 
   const login = (userData: User, authToken: string) => {
     setUser(userData);
