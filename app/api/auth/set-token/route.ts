@@ -1,4 +1,4 @@
-// app/api/auth/set-token/route.ts  — in the operations app
+// app/api/auth/set-token/route.ts
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -6,9 +6,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token");
 
-  if (!token) {
-    return NextResponse.json({ error: "No token" }, { status: 400 });
-  }
+  if (!token) return NextResponse.json({ error: "No token" }, { status: 400 });
 
   const cookieStore = await cookies();
   cookieStore.set("auth_token", token, {
@@ -19,7 +17,5 @@ export async function GET(request: Request) {
     path: "/",
   });
 
-  return NextResponse.redirect(
-    new URL("/dashboard/overview", request.url)
-  );
+  return NextResponse.redirect(new URL("/dashboard/overview", request.url));
 }
