@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type User = {
   id: number;
@@ -46,20 +47,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   // start
+  // ── Listen for token from Admin Portal ──
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Updated allowed origin
       if (event.origin !== "https://admin.shsaccess.com") return;
 
       if (event.data?.type === "AUTH_INJECT" && event.data?.token) {
-        localStorage.setItem("token", event.data.token);
-        localStorage.setItem("user", event.data.user);
-        setToken(event.data.token);
-        setUser(JSON.parse(event.data.user));
-        router.push("/dashboard/overview");
+        try {
+          localStorage.setItem("token", event.data.token);
+          localStorage.setItem("user", event.data.user);
+
+          setToken(event.data.token);
+          setUser(JSON.parse(event.data.user));
+
+          toast.success("Successfully logged in from Admin Portal");
+          router.push("/dashboard/overview");
+        } catch (err) {
+          console.error("Failed to parse auth data", err);
+          toast.error("Failed to process login data");
+        }
       }
     };
 
     window.addEventListener("message", handleMessage);
+
     return () => window.removeEventListener("message", handleMessage);
   }, [router]);
   // end
