@@ -96,7 +96,7 @@ const Overview = () => {
           <Headercontent
               title="Welcome"
               subTitle={user?.name || "Admin"}
-              description="Start with a clear overview of what matters most"
+              description="Start with a clear overview of what matters most."
           />
           <div className="hidden md:block">
             <DateTimeDisplay />
